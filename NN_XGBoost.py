@@ -13,11 +13,11 @@ from keras import Input, Model
 from keras.layers import Dense
 from keras.callbacks import EarlyStopping
 
-# TODO: Import function from Max 
+# Function to filter test data to only include categories present in train data
 def filter_valid_test(df_test, df_train, cat_cols):
     valid_mask = pd.Series(True, index=df_test.index)
     for col in cat_cols:
-        valid_values = df_train[col].unique()
+        valid_values = df_train[col].dropna().unique()
         valid_mask &= df_test[col].isin(valid_values)
     return df_test[valid_mask].copy()
 
@@ -62,15 +62,6 @@ def build_keras_model(input_shape, **kwargs):
     model.compile(optimizer='adam', loss='mse', metrics=['RootMeanSquaredError'])
     return model
 
-# def build_keras_model(input_shape, **kwargs):
-#     inputs = Input(shape=input_shape)
-#     x = Dense(64, activation='relu')(inputs)
-#     x = Dense(32, activation='relu')(x)
-#     outputs = Dense(1)(x)
-#     model = Model(inputs=inputs, outputs=outputs)
-#     model.compile(optimizer='adam', loss='mse', metrics=['RootMeanSquaredError'])
-#     return model
-
 early_stop = EarlyStopping(monitor='loss', patience=10, restore_best_weights=True)
 
 # Define model pipelines
@@ -95,21 +86,36 @@ pipe_nn = Pipeline([
     ))
 ])
 
-# Final test evaluation
-print("\n=== Test Set Evaluation ===")
+# Training and Test Evaluation
+print("\n=== Training and Test Set Evaluation ===")
 for name, model in [('OLS', pipe_ols), ('XGBoost', pipe_xgb), ('KerasNN', pipe_nn)]:
     model.fit(X_train, y_train)
+
+    # Train results
+    y_pred_train_log = model.predict(X_train)
+    y_pred_train = np.exp(y_pred_train_log)
+    y_true_train = np.exp(y_train)
+
+    r2_train = r2_score(y_train, y_pred_train_log)
+    rmse_train = np.sqrt(mean_squared_error(y_train, y_pred_train_log))
+    mape_train = np.mean(np.abs((y_true_train - y_pred_train) / y_true_train)) * 100
+
+    print(f"\n{name} - Training Set:")
+    print(f"R²: {r2_train:.3f} | RMSE: {rmse_train:.3f} | MAPE: {mape_train:.3f}%")
+
+    # Test results
     y_pred_log = model.predict(X_test)
     y_pred = np.exp(y_pred_log)
     y_true = np.exp(y_test)
 
     r2 = r2_score(y_test, y_pred_log)
     rmse = np.sqrt(mean_squared_error(y_test, y_pred_log))
-    mape = np.mean(np.abs((y_true - y_pred) / y_true)) * 100 
+    mape = np.mean(np.abs((y_true - y_pred) / y_true)) * 100
 
-    print(f"{name} | R²: {r2:.3f} | RMSE: {rmse:.3f} | MAPE: {mape:.3f}%")
+    print(f"{name} - Test Set:")
+    print(f"R²: {r2:.3f} | RMSE: {rmse:.3f} | MAPE: {mape:.3f}%")
 
-# Cross-validation (only for OLS and XGBoost)
+# Cross-validation
 kf = KFold(n_splits=5, shuffle=True, random_state=42)
 model_names, r2_list, rmse_list, mape_list = [], [], [], []
 
@@ -131,7 +137,7 @@ for name, pipe in [('OLS', pipe_ols), ('XGBoost', pipe_xgb)]:
 
         r2 = r2_score(y_test_cv, y_pred_log)
         rmse = np.sqrt(mean_squared_error(y_test_cv, y_pred_log))
-        mape = np.mean(np.abs((y_true - y_pred) / y_true)) * 100 
+        mape = np.mean(np.abs((y_true - y_pred) / y_true)) * 100
 
         print(f"Fold {fold} | R²: {r2:.3f} | RMSE: {rmse:.3f} | MAPE: {mape:.3f}%")
 
