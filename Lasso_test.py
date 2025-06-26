@@ -19,9 +19,7 @@ from tensorflow.keras.callbacks import EarlyStopping
 
  # Load the cleaned dataset
 df = pd.read_csv('my_cleaned_data.csv')
-# 1) Drop rows with missing target
 df = df.dropna(subset=['Price'])
-# 2) Log-transform the target
 df['log_price'] = np.log(df['Price'])
 
 # 3) Convert Date to datetime, extract year and month, compute building age
