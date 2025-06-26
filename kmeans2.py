@@ -30,7 +30,7 @@ features_to_scale = ['BuildingArea', 'Bedroom2', 'Car', 'YearBuilt', 'Rooms', 'B
 categorical_vars = ['Suburb', 'Month', 'Method', 'SellerG', 'Type']
 
 # Cluster range
-cluster_range = range(2, 32, 1)
+cluster_range = range(2, 128, 1)
 kf = KFold(n_splits=5, shuffle=True, random_state=42)
 results_list = []
 
